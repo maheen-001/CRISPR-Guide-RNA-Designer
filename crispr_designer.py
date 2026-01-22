@@ -26,11 +26,15 @@ def reverse_complement(seq):
 
     return rev_comp
 
-# Step 3: Find PAM sites (NGG)
+# Step 3: Find PAM sites (NGG, where N is any base)
 def find_grnas(seq):
     guides = []
 
-    # CRISPR needs a 20bp guide + a 3bp PAM, so the sequence needs to be >= 23bp
+    # This is a sliding window scan; move the DNA one base at a time. For each base:
+    #   --> look at the first 20 bases for a possible guide
+    #   --> look at the next 3 bases for a possible PAM (check if PAM = NGG)
+
+    # Note: CRISPR needs a 20bp guide + a 3bp PAM, so the sequence needs to be >= 23bp
     for i in range(len(seq) - 23 + 1):
         guide = seq[i:i+20]
         pam = seq[i+20:i+23]
@@ -45,9 +49,15 @@ def find_grnas(seq):
     
     return guides
 
+# Step 4: GC Content Calculation
+def gc_content(seq):
+    gc = (seq.count("G")) + (seq.count("C"))
+    return gc/len(seq)
+
 # Main
 if __name__ == "__main__":
     dna = get_dna_sequence()
     # print("Sequence length: ", len(dna))
-    guides = find_grnas(dna)
-    print("Found guides:", len(guides))
+    # guides = find_grnas(dna)
+    # print("Found guides:", len(guides))
+    print(gc_content(dna))
