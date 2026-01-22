@@ -11,6 +11,21 @@ def get_dna_sequence():
     
     return seq
 
+# Step 2: Get the reverse complement of each base
+def reverse_complement(seq):
+    complement = {
+        "A":"T",
+        "T":"A",
+        "C":"G",
+        "G":"C"
+    }
+
+    rev_comp = ""
+    for base in reversed(seq):
+        rev_comp += complement[base]
+
+    return rev_comp
+
 # Main
 if __name__ == "__main__":
     dna = get_dna_sequence()
