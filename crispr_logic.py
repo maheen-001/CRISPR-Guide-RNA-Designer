@@ -9,7 +9,7 @@ def get_dna_sequence():
     seq = input("Enter DNA sequence: ").upper().strip()
     return seq
 
-# Step 1:2 Accept DNA from FASTA file by normalizing
+# Step 1.2: Accept DNA from FASTA file by normalizing
 def read_fasta(filename):
     sequence = ""
 
@@ -21,6 +21,18 @@ def read_fasta(filename):
             sequence += line.upper()
     
     return sequence
+
+# Step 1.3: Normalize dna data
+def normalize(seq):
+    lines = seq.splitlines()
+    cleaned = ""
+
+    for line in lines:
+        if line.startswith(">"):
+            continue
+        cleaned += line.strip()
+
+    return cleaned.upper()
 
 # Step 2: Validate that all bases in the DNA sequence are one of: A, T, C, G
 def validate_dna(seq):
@@ -89,7 +101,7 @@ def position_penalty(guide):
         return 10
     return 0
 
-def score_grna(guide):
+def score_grna(guide, dna):
     # By default, score starts at 100
     score = 100
     gc = gc_content(guide)
@@ -116,7 +128,7 @@ def rank_grnas(guides, dna):
         # add entries to the guides dictionary for gc content and score
         g["gc"] = round(gc_content(g["guide"]), 2)
         g["off_targets"] = count_off_targets(g["guide"], dna)
-        g["score"] = score_grna(g["guide"])
+        g["score"] = score_grna(g["guide"], dna)
     
     # Sort the dictionary by score
     return sorted(guides, key=lambda x: x["score"], reverse=True)
@@ -129,45 +141,14 @@ def rank_grnas(guides, dna):
 def hamming_distance(a, b):
     return sum(x != y for x, y in zip(a,b))
 
+# Step 2: Check for off-targets
 def count_off_targets(guide, dna, max_mismatches=2):
     count = 0
 
-    for i in range(len(dna) - len(guide)):
+    for i in range(len(dna) - len(guide) + 1):
         window = dna[i:i+len(guide)]
         if hamming_distance(guide, window) <= max_mismatches:
             count += 1
     
     # When returnign, subtract the perfect match, aka the guide we are referring to
     return count - 1
-
-# ------------------------------------------------------------------------------------ #
-# Main
-# ------------------------------------------------------------------------------------ #
-if __name__ == "__main__":
-    # let the user choose how to give input
-    mode = input("Input type (raw / fasta): ").lower()
-
-    if mode == "fasta":
-        filename = input("FASTA filename: ")
-        dna = read_fasta(filename)
-        validate_dna(dna)
-    else:
-        dna = get_dna_sequence()
-        
-    validate_dna(dna)
-
-    guides = find_grnas(dna)
-    ranked = rank_grnas(guides, dna)
-
-    print(f"Total candidate guides: {len(ranked)}\n")
-
-    for g in ranked[:5]:
-        print(
-            f"Guide: {g['guide']} | "
-            f"PAM: {g['pam']} | "
-            f"Off-targets: {g['off_targets']} | "
-            f"GC: {g['gc']} | "
-            f"Score: {g['score']} | "
-            f"Pos: {g['position']} | "
-            f"Strand: {g['strand']}"
-        )

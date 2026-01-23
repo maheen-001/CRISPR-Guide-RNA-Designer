@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CRISPR gRNA Designer</title>
+    <style>
+        body { font-family: Arial; margin: 40px; }
+        textarea { width: 100%; height: 120px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; }
+    </style>
+</head>
+<body>
+
+<h1>CRISPR gRNA Designer</h1>
+
+<form method="POST" enctype="multipart/form-data">
+
+    <label>Paste DNA or FASTA:</label><br>
+    <textarea name="dna"></textarea><br><br>
+
+    <label>Or upload FASTA file:</label><br>
+    <input type="file" name="fasta_file" accept=".fa,.fasta,.txt"><br><br>
+
+    <button type="submit">Find gRNAs</button>
+</form>
+
+{% if error %}
+<p style="color:red;">{{ error }}</p>
+{% endif %}
+
+{% if results %}
+<table>
+    <tr>
+        <th>Guide</th>
+        <th>PAM</th>
+        <th>GC</th>
+        <th>Off-targets</th>
+        <th>Score</th>
+        <th>Position</th>
+    </tr>
+    {% for g in results %}
+    <tr>
+        <td>{{ g.guide }}</td>
+        <td>{{ g.pam }}</td>
+        <td>{{ g.gc }}</td>
+        <td>{{ g.off_targets }}</td>
+        <td>{{ g.score }}</td>
+        <td>{{ g.position }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+</body>
+</html>
