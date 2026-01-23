@@ -1,21 +1,36 @@
-# This project was made by Maheen Abbasi on Jan. 22, 2026.
+# This project was made by Maheen Abbasi on Jan 2026.
 
 # ------------------------------------------------------------------------------------ #
 # Basic File and DNA setup
 # ------------------------------------------------------------------------------------ #
 
-# Step 1: Accept DNA from user + ensure it is valid
+# Step 1.1: Accept DNA from text
 def get_dna_sequence():
     seq = input("Enter DNA sequence: ").upper().strip()
+    return seq
 
+# Step 1:2 Accept DNA from FASTA file by normalizing
+def read_fasta(filename):
+    sequence = ""
+
+    with open(filename, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith(">"):
+                continue
+            sequence += line.upper()
+    
+    return sequence
+
+# Step 2: Validate that all bases in the DNA sequence are one of: A, T, C, G
+def validate_dna(seq):
     valid_bases = {"A", "T", "C", "G"}
+
     for base in seq:
         if base not in valid_bases:
             raise ValueError("Invalid DNA sequence: only A, T, C, G are allowed. Please check your sequence.")
     
-    return seq
-
-# Step 2: Get the reverse complement of each base
+# Step 3: Get the reverse complement of each base
 def reverse_complement(seq):
     complement = {
         "A":"T",
@@ -30,7 +45,7 @@ def reverse_complement(seq):
 
     return rev_comp
 
-# Step 3: Find PAM sites (NGG, where N is any base)
+# Step 4: Find PAM sites (NGG, where N is any base)
 def find_grnas(seq):
     guides = []
 
@@ -102,7 +117,17 @@ def rank_grnas(guides):
 
 # Main
 if __name__ == "__main__":
-    dna = get_dna_sequence()
+    # let the user choose how to give input
+    mode = input("Input type (raw / fasta): ").lower()
+
+    if mode == "fasta":
+        filename = input("FASTA filename: ")
+        dna = read_fasta(filename)
+        validate_dna(dna)
+    else:
+        dna = get_dna_sequence()
+        
+    validate_dna(dna)
 
     guides = find_grnas(dna)
     ranked = rank_grnas(guides)
