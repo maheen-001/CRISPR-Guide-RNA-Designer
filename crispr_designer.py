@@ -104,18 +104,45 @@ def score_grna(guide):
     if has_bad_repeats(guide):
         score -= 30
     
-    return score
+    # off-target penalty
+    if dna:
+        off_targets = count_off_targets(guide, dna)
+        score -= off_targets * 10
 
-def rank_grnas(guides):
+    return round(score, 2)
+
+def rank_grnas(guides, dna):
     for g in guides:
         # add entries to the guides dictionary for gc content and score
         g["gc"] = round(gc_content(g["guide"]), 2)
+        g["off_targets"] = count_off_targets(g["guide"], dna)
         g["score"] = score_grna(g["guide"])
     
     # Sort the dictionary by score
     return sorted(guides, key=lambda x: x["score"], reverse=True)
 
+# ------------------------------------------------------------------------------------ #
+# Off-target checking
+# ------------------------------------------------------------------------------------ #
+
+# Step 1: Compute Hamming distance
+def hamming_distance(a, b):
+    return sum(x != y for x, y in zip(a,b))
+
+def count_off_targets(guide, dna, max_mismatches=2):
+    count = 0
+
+    for i in range(len(dna) - len(guide)):
+        window = dna[i:i+len(guide)]
+        if hamming_distance(guide, window) <= max_mismatches:
+            count += 1
+    
+    # When returnign, subtract the perfect match, aka the guide we are referring to
+    return count - 1
+
+# ------------------------------------------------------------------------------------ #
 # Main
+# ------------------------------------------------------------------------------------ #
 if __name__ == "__main__":
     # let the user choose how to give input
     mode = input("Input type (raw / fasta): ").lower()
@@ -130,7 +157,7 @@ if __name__ == "__main__":
     validate_dna(dna)
 
     guides = find_grnas(dna)
-    ranked = rank_grnas(guides)
+    ranked = rank_grnas(guides, dna)
 
     print(f"Total candidate guides: {len(ranked)}\n")
 
@@ -138,6 +165,7 @@ if __name__ == "__main__":
         print(
             f"Guide: {g['guide']} | "
             f"PAM: {g['pam']} | "
+            f"Off-targets: {g['off_targets']} | "
             f"GC: {g['gc']} | "
             f"Score: {g['score']} | "
             f"Pos: {g['position']} | "
