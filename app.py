@@ -41,7 +41,7 @@ def index():
             
             cl.validate_dna(dna)
 
-            guides = cl.find_grnas(dna)
+            guides = cl.find_all_grnas(dna)
             ranked = cl.rank_grnas(guides, dna)
             results = ranked[:5]
         

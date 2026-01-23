@@ -81,6 +81,22 @@ def find_grnas(seq):
     
     return guides
 
+def find_all_grnas(seq):
+    # Forward strand
+    forward = find_grnas(seq)
+
+    # Reverse
+    rev_seq = reverse_complement(seq)
+    reverse = find_grnas(rev_seq)
+
+    # Update strand info for reverse hits
+    for g in reverse:
+        g["strand"] = "-"
+        # Convert pos to original coordinate
+        g["position"] = len(seq) - (g["position"] + 20)
+
+    return forward + reverse
+
 # ------------------------------------------------------------------------------------ #
 # Methods for Scoring and Ranking gRNA
 #   --> Rule based CRISPR Scoring heuristic
@@ -144,11 +160,13 @@ def hamming_distance(a, b):
 # Step 2: Check for off-targets
 def count_off_targets(guide, dna, max_mismatches=2):
     count = 0
+    rev_dna = reverse_complement(dna)
 
-    for i in range(len(dna) - len(guide) + 1):
-        window = dna[i:i+len(guide)]
-        if hamming_distance(guide, window) <= max_mismatches:
-            count += 1
+    for genome in (dna, rev_dna):
+        for i in range(len(genome) - len(guide) + 1):
+            window = genome[i:i+len(guide)]
+            if hamming_distance(guide, window) <= max_mismatches:
+                count += 1
     
     # When returnign, subtract the perfect match, aka the guide we are referring to
     return count - 1
