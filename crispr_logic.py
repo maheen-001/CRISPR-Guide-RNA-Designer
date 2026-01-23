@@ -22,7 +22,7 @@ def read_fasta(filename):
     
     return sequence
 
-# Step 1.3: Normalize dna data
+# Step 1.3: Normalize DNA data
 def normalize(seq):
     lines = seq.splitlines()
     cleaned = ""
@@ -57,8 +57,19 @@ def reverse_complement(seq):
 
     return rev_comp
 
-# Step 4: Find PAM sites (NGG, where N is any base)
-def find_grnas(seq):
+# Step 4: Specify PAM checking mode (Strict = NGG only; Relaxed = NGG or NAG; N is any base)
+def is_valid_pam(pam, mode="strict"):
+    if mode == "strict":
+        return pam[1:] == "GG"
+    
+    elif mode == "relaxed":
+        return pam[1:] in ["GG", "AG"]
+    
+    else:
+        raise ValueError("Invalid PAM mode")
+    
+# Step 5: Find PAM sites
+def find_grnas(seq, pam_mode = "strict"):
     guides = []
 
     # This is a sliding window scan; move the DNA one base at a time. For each base:
@@ -71,29 +82,28 @@ def find_grnas(seq):
         pam = seq[i+20:i+23]
 
         # guides are stored in a dictionary
-        if pam[1:] == "GG":
+        if is_valid_pam(pam, pam_mode):
             guides.append({
                 "guide": guide,
                 "pam": pam,
+                "pam_type": pam[1:],
                 "position": i,
                 "strand": "+"
             })
     
     return guides
 
-def find_all_grnas(seq):
+def find_all_grnas(seq, pam_mode = "strict"):
     # Forward strand
-    forward = find_grnas(seq)
+    forward = find_grnas(seq, pam_mode)
 
     # Reverse
     rev_seq = reverse_complement(seq)
-    reverse = find_grnas(rev_seq)
+    reverse = find_grnas(rev_seq, pam_mode)
 
     # Update strand info for reverse hits
     for g in reverse:
         g["strand"] = "-"
-        # Convert pos to original coordinate
-        g["position"] = len(seq) - (g["position"] + 20)
 
     return forward + reverse
 
@@ -117,7 +127,7 @@ def position_penalty(guide):
         return 10
     return 0
 
-def score_grna(guide, dna):
+def score_grna(guide, dna, pam_type):
     # By default, score starts at 100
     score = 100
     gc = gc_content(guide)
@@ -132,6 +142,10 @@ def score_grna(guide, dna):
     if has_bad_repeats(guide):
         score -= 30
     
+    # relaxed PAMs
+    if pam_type == "AG":
+        score -= 15
+
     # off-target penalty
     if dna:
         off_targets = count_off_targets(guide, dna)
@@ -144,7 +158,7 @@ def rank_grnas(guides, dna):
         # add entries to the guides dictionary for gc content and score
         g["gc"] = round(gc_content(g["guide"]), 2)
         g["off_targets"] = count_off_targets(g["guide"], dna)
-        g["score"] = score_grna(g["guide"], dna)
+        g["score"] = score_grna(g["guide"], dna, g["pam_type"])
     
     # Sort the dictionary by score
     return sorted(guides, key=lambda x: x["score"], reverse=True)

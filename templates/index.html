@@ -21,6 +21,12 @@
     <label>Or upload FASTA file:</label><br>
     <input type="file" name="fasta_file" accept=".fa,.fasta,.txt"><br><br>
 
+    <label>PAM mode:</label><br>
+    <select name="pam_mode">
+        <option value="strict">Strict (NGG only)</option>
+        <option value="relaxed">Relaxed (NGG + NAG)</option>
+    </select><br><br>
+
     <button type="submit">Find gRNAs</button>
 </form>
 

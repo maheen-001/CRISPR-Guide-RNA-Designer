@@ -1,5 +1,14 @@
 # This project was made by Maheen Abbasi on Jan 2026.
 
+# TODO:
+# - Interactive plots
+# - More Cas enzymes support
+# - UI obv it is super ugly rn
+# - Export as ... (csv, pdf, etc)
+# - Filter(s)
+# - More info on table (like base position, PAM mode badge)
+# - Clear table on refresh
+
 # app.py
 #--------------
 # Create a web interface for the CRISPR gRNA designer using Flask.
@@ -22,6 +31,7 @@ def index():
     if request.method == "POST":
         try:
             dna = ""
+            pam_mode = request.form.get("pam_mode", "strict")
 
             # FASTA upload
             if "fasta_file" in request.files:
@@ -41,7 +51,7 @@ def index():
             
             cl.validate_dna(dna)
 
-            guides = cl.find_all_grnas(dna)
+            guides = cl.find_all_grnas(dna, pam_mode = pam_mode)
             ranked = cl.rank_grnas(guides, dna)
             results = ranked[:5]
         
