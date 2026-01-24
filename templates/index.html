@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <title>CRISPR gRNA Designer</title>
     <style>
         body { font-family: Arial; margin: 40px; }
         textarea { width: 100%; height: 120px; }
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; }
+        .filter-label { margin-right: 8px; }
+        .filter-input { margin-right: 20px; }
     </style>
 </head>
 <body>
@@ -14,18 +17,17 @@
 <h1>CRISPR gRNA Designer</h1>
 
 <form method="POST" enctype="multipart/form-data">
-
     <label>Paste DNA or FASTA:</label><br>
-    <textarea name="dna"></textarea><br><br>
+    <textarea name="dna">{% if results %}{{ request.form.dna }}{% endif %}</textarea><br><br>
 
     <label>Or upload FASTA file:</label><br>
     <input type="file" name="fasta_file" accept=".fa,.fasta,.txt"><br><br>
 
     <label>Cas Enzyme:</label><br>
     <select name="enzyme">
-        <option value="SpCas9">SpCas9 (NGG / NAG)</option>
-        <option value="SaCas9">SaCas9 (NNGRRT)</option>
-        <option value="Cas12a">Cas12a (TTTV)</option>
+        <option value="SpCas9" {% if results and request.form.enzyme=='SpCas9' %}selected{% endif %}>SpCas9 (NGG / NAG)</option>
+        <option value="SaCas9" {% if results and request.form.enzyme=='SaCas9' %}selected{% endif %}>SaCas9 (NNGRRT)</option>
+        <option value="Cas12a" {% if results and request.form.enzyme=='Cas12a' %}selected{% endif %}>Cas12a (TTTV)</option>
     </select><br><br>
 
     <button type="submit">Find gRNAs</button>
@@ -36,55 +38,104 @@
 {% endif %}
 
 {% if results %}
+<!-- Filters -->
+<h3>Filters</h3>
+<label>Minimum score:</label>
+<input type="number" id="minScore" value="0" step="1">
+
+<label>PAM type:</label>
+<select id="pamFilter">
+    <option value="all">All</option>
+    <option value="canonical">Canonical</option>
+    <option value="non-canonical">Non-canonical</option>
+</select>
+
+<label>Strand:</label>
+<select id="strandFilter">
+    <option value="all">All</option>
+    <option value="+">+</option>
+    <option value="-">-</option>
+</select>
+
+<!-- Table -->
 <table>
     <tr>
-        <th>Guide</th>
-        <th>PAM</th>
-        <th>GC</th>
-        <th>Off-targets</th>
-        <th>Score</th>
-        <th>Position</th>
-        <th>PAM Type</th>
-        <th>Enzyme</th>
+        <th>Guide</th><th>PAM</th><th>GC</th><th>Off-targets</th><th>Score</th><th>Position</th><th>PAM Type</th><th>Enzyme</th>
     </tr>
     {% for g in results %}
-    <tr>
-        <td>{{ g.guide }}</td>
-        <td>{{ g.pam }}</td>
-        <td>{{ g.gc }}</td>
-        <td>{{ g.off_targets }}</td>
-        <td>{{ g.score }}</td>
-        <td>{{ g.position }}</td>
-        <td>
-            {% if g.pam_class == "canonical" %}
-                <span style="color: white; background: green; padding: 4px 6px; border-radius: 4px;">
-                    Canonical
-                </span>
-            {% else %}
-                <span style="color: white; background: orange; padding: 4px 6px; border-radius: 4px;">
-                    Non-canonical
-                </span>
-            {% endif %}
-        </td>
+    <tr data-score="{{ g.score }}" data-pam="{{ g.pam_class }}" data-strand="{{ g.strand }}">
+        <td>{{ g.guide }}</td><td>{{ g.pam }}</td><td>{{ g.gc }}</td><td>{{ g.off_targets }}</td>
+        <td>{{ g.score }}</td><td>{{ g.position }}</td>
+        <td>{% if g.pam_class=='canonical' %}<span style="color:white;background:green;padding:4px 6px;border-radius:4px;">Canonical</span>{% else %}<span style="color:white;background:orange;padding:4px 6px;border-radius:4px;">Non-canonical</span>{% endif %}</td>
         <td>{{ g.enzyme }}</td>
     </tr>
     {% endfor %}
 </table>
-{% endif %}
 
+<!-- Export buttons -->
 <form method="POST" action="/export/csv">
     <input type="hidden" name="dna" value="{{ request.form.dna }}">
     <input type="hidden" name="enzyme" value="{{ request.form.enzyme }}">
     <button type="submit">Export CSV</button>
 </form>
 
-<p> </p>
-
 <form method="POST" action="/export/pdf">
     <input type="hidden" name="dna" value="{{ request.form.dna }}">
     <input type="hidden" name="enzyme" value="{{ request.form.enzyme }}">
     <button type="submit">Export PDF</button>
 </form>
+
+<!-- Plots -->
+<h3>Plots</h3>
+<div id="scorePositionPlot" style="width:100%; height:400px;"></div>
+<div id="gcScorePlot" style="width:100%; height:400px;"></div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    function applyFilters() {
+        const minScore = parseFloat(document.getElementById("minScore").value);
+        const pamFilter = document.getElementById("pamFilter").value;
+        const strandFilter = document.getElementById("strandFilter").value;
+
+        document.querySelectorAll("tr[data-score]").forEach(row => {
+            const score = parseFloat(row.dataset.score);
+            const pam = row.dataset.pam;
+            const strand = row.dataset.strand;
+
+            let visible = true;
+            if(score < minScore) visible=false;
+            if(pamFilter!=="all" && pam!==pamFilter) visible=false;
+            if(strandFilter!=="all" && strand!==strandFilter) visible=false;
+
+            row.style.display = visible?"":"none";
+        });
+    }
+
+    ["minScore","pamFilter","strandFilter"].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el) el.addEventListener("input", applyFilters);
+    });
+
+    // Plots
+    const guides = {{ results | tojson | safe }};
+    Plotly.newPlot("scorePositionPlot",[{
+        x:guides.map(g=>g.position),
+        y:guides.map(g=>g.score),
+        mode:"markers",
+        text:guides.map(g=>g.guide),
+        marker:{size:8}
+    }],{title:"gRNA Score vs Genomic Position",xaxis:{title:"Position"},yaxis:{title:"Score"}});
+
+    Plotly.newPlot("gcScorePlot",[{
+        x:guides.map(g=>g.gc),
+        y:guides.map(g=>g.score),
+        mode:"markers",
+        text:guides.map(g=>g.guide),
+        marker:{size:8}
+    }],{title:"GC Content vs gRNA Score",xaxis:{title:"GC Fraction"},yaxis:{title:"Score"}});
+});
+</script>
+{% endif %}
 
 </body>
 </html>

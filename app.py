@@ -1,9 +1,7 @@
 # This project was made by Maheen Abbasi on Jan 2026.
 
 # TODO:
-# - Interactive plots
 # - UI obv it is super ugly rn
-# - Clear table on refresh
 
 # app.py
 #--------------
@@ -40,6 +38,11 @@ def index():
     results = None
     error = None
 
+    if request.method == "GET":
+        results = None
+        error = None
+        request.form = {}
+
     # User submits the form
     if request.method == "POST":
         try:
@@ -71,7 +74,7 @@ def index():
         
         except Exception as e:
             error = str(e)
-    
+
     # Render the HTMLK page and pass results/errors to it
     return render_template("index.html", results = results, error = error)
 
