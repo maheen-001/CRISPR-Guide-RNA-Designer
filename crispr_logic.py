@@ -1,5 +1,29 @@
 # This project was made by Maheen Abbasi on Jan 2026.
 
+CAS_ENZYMES = {
+    "SpCas9": {
+        "guide_length": 20,
+        "pam_patterns": ["NGG", "NAG"],
+        "pam_length": 3,
+        "pam_side": "downstream",
+        "relaxed_penalty": 15
+    },
+    "SaCas9": {
+        "guide_length": 21,
+        "pam_patterns": ["NNGRRT"],
+        "pam_length": 6,
+        "pam_side": "downstream",
+        "relaxed_penalty": 0
+    },
+    "Cas12a": {
+        "guide_length": 23,
+        "pam_patterns": ["TTTV"],
+        "pam_length": 4,
+        "pam_side": "upstream",
+        "relaxed_penalty": 0
+    }
+}
+
 # ------------------------------------------------------------------------------------ #
 # Basic File and DNA setup
 # ------------------------------------------------------------------------------------ #
@@ -57,51 +81,91 @@ def reverse_complement(seq):
 
     return rev_comp
 
-# Step 4: Specify PAM checking mode (Strict = NGG only; Relaxed = NGG or NAG; N is any base)
-def is_valid_pam(pam, mode="strict"):
-    if mode == "strict":
-        return pam[1:] == "GG"
+# Step 4: Check for valid PAMs
+def pam_matches(pam, pattern):
+    if len(pam) != len(pattern):
+        return False
     
-    elif mode == "relaxed":
-        return pam[1:] in ["GG", "AG"]
+    # Compare PAM sequence against a PAM pattern (NGG, NAG, NNGRRT)
+    iupac = {
+        "N": {"A", "T", "C", "G"},
+        "R": {"A", "G"},
+        "Y": {"C", "T"},
+        "V": {"A", "C", "G"}
+    }
+
+    for base, rule in zip(pam, pattern):
+        if rule in iupac:
+            if base not in iupac[rule]:
+                return False
+        else:
+            if base != rule:
+                return False
     
-    else:
-        raise ValueError("Invalid PAM mode")
+    return True
+
+def classify_pam(pam, enzyme = "SpCas9"):
+    patterns = CAS_ENZYMES[enzyme]["pam_patterns"]
+
+    for pattern in patterns:
+        if pam_matches(pam, pattern):
+            if enzyme == "SpCas9" and pattern != "NGG":
+                return "non-canonical"
+            return "canonical"
+    return None
+
     
 # Step 5: Find PAM sites
-def find_grnas(seq, pam_mode = "strict"):
+def find_grnas(seq, enzyme = "SpCas9"):
     guides = []
+    cfg = CAS_ENZYMES[enzyme]
 
-    # This is a sliding window scan; move the DNA one base at a time. For each base:
-    #   --> look at the first 20 bases for a possible guide
-    #   --> look at the next 3 bases for a possible PAM (check if PAM = NGG)
+    g_len = cfg["guide_length"]
+    pam_len = cfg["pam_length"]
+    pam_side = cfg["pam_side"]
 
-    # Note: CRISPR needs a 20bp guide + a 3bp PAM, so the sequence needs to be >= 23bp
-    for i in range(len(seq) - 23 + 1):
-        guide = seq[i:i+20]
-        pam = seq[i+20:i+23]
+    total_len = g_len + pam_len
+
+    # Slide a window along the DNA, and at each position, check:
+    #   -> if a guide + PAM started here (or vice versa), would it be valid for THIS enzyme
+    for i in range(len(seq) - total_len + 1):
+
+        if pam_side == "downstream":
+            # downstream PAM (Cas12a)
+            guide = seq[i:(i + g_len)]
+            pam = seq[i+g_len: (i + g_len + pam_len)]
+        else:
+            # upstream PAM (Cas12a)
+            pam = seq[i:(i + pam_len)]
+            guide = seq[i+pam_len: (i + pam_len + g_len)]
+
+        if len(guide) != g_len or len(pam) != pam_len:
+            continue
+
+        pam_class = classify_pam(pam, enzyme)
 
         # guides are stored in a dictionary
-        if is_valid_pam(pam, pam_mode):
+        if pam_class:
             guides.append({
                 "guide": guide,
                 "pam": pam,
-                "pam_type": pam[1:],
+                "pam_class": pam_class,
                 "position": i,
-                "strand": "+"
+                "strand": "+",
+                "enzyme": enzyme
             })
     
     return guides
 
-def find_all_grnas(seq, pam_mode = "strict"):
+def find_all_grnas(seq, enzyme = "SpCas9"):
     # Forward strand
-    forward = find_grnas(seq, pam_mode)
+    forward = find_grnas(seq, enzyme)
 
     # Reverse
     rev_seq = reverse_complement(seq)
-    reverse = find_grnas(rev_seq, pam_mode)
+    reverse = find_grnas(rev_seq, enzyme)
 
-    # Update strand info for reverse hits
+    # Update strand info for reverse hits since find_grnas default to +
     for g in reverse:
         g["strand"] = "-"
 
@@ -127,13 +191,13 @@ def position_penalty(guide):
         return 10
     return 0
 
-def score_grna(guide, dna, pam_type):
+def score_grna(guide, dna, pam_class, enzyme = "SpCas9"):
     # By default, score starts at 100
     score = 100
     gc = gc_content(guide)
 
-    # Weighted scoring for gc content
-    score -= abs(gc - 0.5) * 40
+    # Weighted scoring for gc content with guide length normalization
+    score -= abs(gc - 0.5) * (40 * (20/len(guide)))
 
     # pos penalty
     score -= (position_penalty(guide))
@@ -142,14 +206,13 @@ def score_grna(guide, dna, pam_type):
     if has_bad_repeats(guide):
         score -= 30
     
-    # relaxed PAMs
-    if pam_type == "AG":
-        score -= 15
+    # non-canonical/relaxed PAM penalty
+    if pam_class == "non-canonical":
+        score -= CAS_ENZYMES[enzyme]["relaxed_penalty"]
 
     # off-target penalty
-    if dna:
-        off_targets = count_off_targets(guide, dna)
-        score -= off_targets * 10
+    off_targets = count_off_targets(guide, dna)
+    score -= off_targets * 10
 
     return round(score, 2)
 
@@ -158,7 +221,12 @@ def rank_grnas(guides, dna):
         # add entries to the guides dictionary for gc content and score
         g["gc"] = round(gc_content(g["guide"]), 2)
         g["off_targets"] = count_off_targets(g["guide"], dna)
-        g["score"] = score_grna(g["guide"], dna, g["pam_type"])
+        g["score"] = score_grna(
+            g["guide"], 
+            dna, 
+            g["pam_class"],
+            g["enzyme"]
+            )
     
     # Sort the dictionary by score
     return sorted(guides, key=lambda x: x["score"], reverse=True)

@@ -21,10 +21,11 @@
     <label>Or upload FASTA file:</label><br>
     <input type="file" name="fasta_file" accept=".fa,.fasta,.txt"><br><br>
 
-    <label>PAM mode:</label><br>
-    <select name="pam_mode">
-        <option value="strict">Strict (NGG only)</option>
-        <option value="relaxed">Relaxed (NGG + NAG)</option>
+    <label>Cas Enzyme:</label><br>
+    <select name="enzyme">
+        <option value="SpCas9">SpCas9 (NGG / NAG)</option>
+        <option value="SaCas9">SaCas9 (NNGRRT)</option>
+        <option value="Cas12a">Cas12a (TTTV)</option>
     </select><br><br>
 
     <button type="submit">Find gRNAs</button>
@@ -43,6 +44,8 @@
         <th>Off-targets</th>
         <th>Score</th>
         <th>Position</th>
+        <th>PAM Type</th>
+        <th>Enzyme</th>
     </tr>
     {% for g in results %}
     <tr>
@@ -52,10 +55,36 @@
         <td>{{ g.off_targets }}</td>
         <td>{{ g.score }}</td>
         <td>{{ g.position }}</td>
+        <td>
+            {% if g.pam_class == "canonical" %}
+                <span style="color: white; background: green; padding: 4px 6px; border-radius: 4px;">
+                    Canonical
+                </span>
+            {% else %}
+                <span style="color: white; background: orange; padding: 4px 6px; border-radius: 4px;">
+                    Non-canonical
+                </span>
+            {% endif %}
+        </td>
+        <td>{{ g.enzyme }}</td>
     </tr>
     {% endfor %}
 </table>
 {% endif %}
+
+<form method="POST" action="/export/csv">
+    <input type="hidden" name="dna" value="{{ request.form.dna }}">
+    <input type="hidden" name="enzyme" value="{{ request.form.enzyme }}">
+    <button type="submit">Export CSV</button>
+</form>
+
+<p> </p>
+
+<form method="POST" action="/export/pdf">
+    <input type="hidden" name="dna" value="{{ request.form.dna }}">
+    <input type="hidden" name="enzyme" value="{{ request.form.enzyme }}">
+    <button type="submit">Export PDF</button>
+</form>
 
 </body>
 </html>
