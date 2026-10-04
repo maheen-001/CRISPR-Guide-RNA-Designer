@@ -4,7 +4,7 @@ A Python/Flask web application for identifying and ranking candidate CRISPR guid
 
 The project combines bioinformatics sequence processing with a web-based interface to identify potential guide sequences, evaluate PAM compatibility, calculate basic sequence characteristics, and rank candidate guides using a rule-based scoring heuristic.
 
-> **Project status:** Completed educational/portfolio project
+> **Project status:** Completed educational / portfolio project
 
 ## Overview
 
