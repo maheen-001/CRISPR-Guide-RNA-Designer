@@ -1,97 +1,695 @@
 <!DOCTYPE html>
-<html>
+
+<html lang="en">
 <head>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <title>CRISPR gRNA Designer</title>
-    <style>
-        body { font-family: Arial; margin: 40px; }
-        textarea { width: 100%; height: 120px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; }
-        .filter-label { margin-right: 8px; }
-        .filter-input { margin-right: 20px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRISPR gRNA Designer</title>
+
+<!-- Google Fonts -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Plotly for interactive graphs -->
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<style>
+  :root {
+    --paper: #F7F8F2;
+    --paper-raised: #FFFFFF;
+    --ink: #16262B;
+    --muted: #5B6B64;
+    --line: #D9DED2;
+    --teal: #0E7C78;
+    --teal-deep: #0B5F5C;
+    --teal-soft: rgba(14, 124, 120, 0.08);
+    --amber: #B9790F;
+    --amber-soft: #F4E4C8;
+    --danger: #B3402A;
+    --danger-soft: #FBEAE4;
+    --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+    --radius-sm: 4px;
+    --radius-md: 10px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    line-height: 1.55;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 3rem 0 2rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.9rem, 3vw, 2.5rem);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 0.6rem;
+  }
+
+  .hero-sub {
+    color: var(--muted);
+    max-width: 58ch;
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  /* ---------- Layout ---------- */
+  .layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  @media (max-width: 860px) {
+    .layout {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .panel {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1.75rem;
+  }
+
+  .panel-input {
+    position: sticky;
+    top: 1.5rem;
+  }
+
+  @media (max-width: 860px) {
+    .panel-input {
+      position: static;
+    }
+  }
+
+  .panel h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 0 1.1rem;
+  }
+
+  /* ---------- Form fields ---------- */
+  label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 500;
+    margin-bottom: 0.35rem;
+  }
+
+  textarea,
+  input[type="file"] {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.7rem;
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  textarea {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    height: 140px;
+    resize: vertical;
+    line-height: 1.5;
+    margin-bottom: 1.1rem;
+  }
+
+  input[type="file"] {
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    margin-bottom: 1.4rem;
+  }
+
+  fieldset.enzyme-group {
+    border: none;
+    padding: 0;
+    margin: 0 0 1.4rem;
+  }
+
+  fieldset.enzyme-group legend {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 500;
+    padding: 0 0 0.6rem;
+  }
+
+  .enzyme-card {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.7rem 0.85rem;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .enzyme-card:has(input:checked) {
+    border-color: var(--teal);
+    background: var(--teal-soft);
+  }
+
+  .enzyme-card input {
+    accent-color: var(--teal);
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .enzyme-pam {
+    font-family: var(--font-mono);
+    font-weight: 600;
+    font-size: 1.25rem;
+    color: var(--teal-deep);
+    min-width: 4.6ch;
+  }
+
+  .enzyme-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .enzyme-name {
+    font-weight: 600;
+    font-size: 0.92rem;
+  }
+
+  .enzyme-meta {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  /* ---------- Buttons ---------- */
+  .btn-primary {
+    width: 100%;
+    background: var(--teal);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 1.3rem;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-primary:hover {
+    background: var(--teal-deep);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: var(--radius-sm);
+    padding: 0.55rem 1rem;
+    font-family: var(--font-sans);
+    font-weight: 500;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .btn-secondary:hover {
+    border-color: var(--teal);
+    color: var(--teal-deep);
+  }
+
+  /* ---------- Results panel ---------- */
+  .error-banner {
+    background: var(--danger-soft);
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    border-radius: var(--radius-sm);
+    padding: 0.85rem 1rem;
+    margin-bottom: 1.4rem;
+    font-size: 0.9rem;
+  }
+
+  .empty-state {
+    padding: 3rem 1.5rem;
+    color: var(--muted);
+    border: 1px dashed var(--line);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+  }
+
+  /* ---------- Filters ---------- */
+  .filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.2rem;
+    align-items: flex-end;
+    margin-bottom: 1.3rem;
+    padding-bottom: 1.3rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .filter-field label {
+    margin: 0;
+  }
+
+  .filter-field input,
+  .filter-field select {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.6rem;
+    background: var(--paper);
+    color: var(--ink);
+    min-width: 100px;
+  }
+
+  /* ---------- Results table ---------- */
+  .table-wrap {
+    overflow-x: auto;
+    margin-bottom: 1.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+  }
+
+  th,
+  td {
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  th {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 0.76rem;
+    color: var(--muted);
+    background: var(--paper);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* ---------- Result badges ---------- */
+  .badge-top {
+    display: inline-block;
+    font-family: var(--font-sans);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--amber);
+    background: var(--amber-soft);
+    border-radius: 3px;
+    padding: 0.12rem 0.4rem;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+
+  .badge {
+    display: inline-block;
+    font-family: var(--font-sans);
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 3px;
+    padding: 0.15rem 0.5rem;
+    color: #fff;
+  }
+
+  .badge-canonical {
+    background: var(--teal);
+  }
+
+  .badge-noncanonical {
+    background: var(--amber);
+  }
+
+  /* ---------- Score bar ---------- */
+  .score-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .score-bar {
+    position: relative;
+    width: 56px;
+    height: 6px;
+    background: var(--line);
+    border-radius: 3px;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .score-bar span {
+    position: absolute;
+    inset: 0;
+    width: var(--pct);
+    background: var(--teal);
+    border-radius: 3px;
+  }
+
+  /* ---------- Export buttons ---------- */
+  .export-row {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 2.2rem;
+  }
+
+  /* ---------- Plots ---------- */
+  .plots {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .plot-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+  }
+
+  .plot-card h3 {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .plot-el {
+    width: 100%;
+    height: 360px;
+  }
+
+  /* ---------- Reduced motion ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+</style>
+
 </head>
+
 <body>
 
-<h1>CRISPR gRNA Designer</h1>
+<div class="page">
 
-<form method="POST" enctype="multipart/form-data">
-    <label>Paste DNA or FASTA:</label><br>
-    <textarea name="dna">{% if results %}{{ request.form.dna }}{% endif %}</textarea><br><br>
+  <!-- Main page heading -->
 
-    <label>Or upload FASTA file:</label><br>
-    <input type="file" name="fasta_file" accept=".fa,.fasta,.txt"><br><br>
+  <header class="hero">
+    <h1>CRISPR gRNA Designer</h1>
+    <p class="hero-sub">
+      Paste a DNA sequence or upload a FASTA, pick a Cas enzyme, and get every
+      candidate guide RNA ranked by GC content, off-target count, and PAM quality.
+    </p>
+  </header>
 
-    <label>Cas Enzyme:</label><br>
-    <select name="enzyme">
-        <option value="SpCas9" {% if results and request.form.enzyme=='SpCas9' %}selected{% endif %}>SpCas9 (NGG / NAG)</option>
-        <option value="SaCas9" {% if results and request.form.enzyme=='SaCas9' %}selected{% endif %}>SaCas9 (NNGRRT)</option>
-        <option value="Cas12a" {% if results and request.form.enzyme=='Cas12a' %}selected{% endif %}>Cas12a (TTTV)</option>
-    </select><br><br>
+  <main class="layout">
 
-    <button type="submit">Find gRNAs</button>
-</form>
+<!-- Sequence input -->
+<section class="panel panel-input" aria-label="Sequence input">
+  <h2>Sequence</h2>
 
-{% if error %}
-<p style="color:red;">{{ error }}</p>
-{% endif %}
+  <form method="POST" enctype="multipart/form-data">
+
+    <!-- DNA sequence text input -->
+    <label for="dnaInput">Paste DNA or FASTA</label>
+    <textarea
+      id="dnaInput"
+      name="dna"
+      placeholder="ATGCGTAC... or paste a full FASTA record"
+    >{{ dna }}</textarea>
+
+    <!-- FASTA file upload -->
+    <label for="fastaFile">Or upload a FASTA file</label>
+    <input
+      type="file"
+      id="fastaFile"
+      name="fasta_file"
+      accept=".fa,.fasta,.txt"
+    >
+
+    <!-- Cas enzyme selection -->
+    <fieldset class="enzyme-group">
+      <legend>Cas enzyme</legend>
+
+      <label class="enzyme-card">
+        <input
+          type="radio"
+          name="enzyme"
+          value="SpCas9"
+          {% if enzyme == 'SpCas9' %}checked{% endif %}
+        >
+        <span class="enzyme-pam">NGG</span>
+        <span class="enzyme-text">
+          <span class="enzyme-name">SpCas9</span>
+          <span class="enzyme-meta">20 nt guide &middot; PAM downstream</span>
+        </span>
+      </label>
+
+      <label class="enzyme-card">
+        <input
+          type="radio"
+          name="enzyme"
+          value="SaCas9"
+          {% if enzyme == 'SaCas9' %}checked{% endif %}
+        >
+        <span class="enzyme-pam">NNGRRT</span>
+        <span class="enzyme-text">
+          <span class="enzyme-name">SaCas9</span>
+          <span class="enzyme-meta">21 nt guide &middot; PAM downstream</span>
+        </span>
+      </label>
+
+      <label class="enzyme-card">
+        <input
+          type="radio"
+          name="enzyme"
+          value="Cas12a"
+          {% if enzyme == 'Cas12a' %}checked{% endif %}
+        >
+        <span class="enzyme-pam">TTTV</span>
+        <span class="enzyme-text">
+          <span class="enzyme-name">Cas12a</span>
+          <span class="enzyme-meta">23 nt guide &middot; PAM upstream</span>
+        </span>
+      </label>
+
+    </fieldset>
+
+    <button type="submit" class="btn-primary">Find gRNAs</button>
+  </form>
+</section>
+
+<!-- Results -->
+<section class="panel panel-results" aria-label="Results">
+
+  <!-- Display validation or processing errors -->
+  {% if error %}
+    <div class="error-banner">{{ error }}</div>
+  {% endif %}
+
+  {% if results %}
+
+    <!-- Filter results without sending another request -->
+    <div class="filter-bar">
+
+      <div class="filter-field">
+        <label for="minScore">Minimum score</label>
+        <input type="number" id="minScore" value="0" step="1">
+      </div>
+
+      <div class="filter-field">
+        <label for="pamFilter">PAM type</label>
+        <select id="pamFilter">
+          <option value="all">All</option>
+          <option value="canonical">Canonical</option>
+          <option value="non-canonical">Non-canonical</option>
+        </select>
+      </div>
+
+      <div class="filter-field">
+        <label for="strandFilter">Strand</label>
+        <select id="strandFilter">
+          <option value="all">All</option>
+          <option value="+">+</option>
+          <option value="-">-</option>
+        </select>
+      </div>
+
+    </div>
+
+    <!-- Ranked gRNA results table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Guide</th>
+            <th>PAM</th>
+            <th>Type</th>
+            <th>GC</th>
+            <th>Off-targets</th>
+            <th>Score</th>
+            <th>Position</th>
+            <th>Strand</th>
+            <th>Enzyme</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {% for g in results %}
+
+          <!-- Keep score bar between 0% and 100% -->
+          {% set clamped = [g.score, 100]|min %}
+          {% set clamped = [clamped, 0]|max %}
+
+          <tr
+            data-score="{{ g.score }}"
+            data-pam="{{ g.pam_class }}"
+            data-strand="{{ g.strand }}"
+          >
+
+            <!-- Mark the highest-ranked guide -->
+            <td>
+              {% if loop.first %}
+                <span class="badge-top">Top pick</span>
+              {% endif %}
+              {{ g.guide }}
+            </td>
+
+            <td>{{ g.pam }}</td>
+
+            <!-- Show whether the PAM is canonical -->
+            <td>
+              {% if g.pam_class == 'canonical' %}
+                <span class="badge badge-canonical">Canonical</span>
+              {% else %}
+                <span class="badge badge-noncanonical">Non-canonical</span>
+              {% endif %}
+            </td>
+
+            <td>{{ g.gc }}</td>
+            <td>{{ g.off_targets }}</td>
+
+            <!-- Display score and visual score bar -->
+            <td>
+              <div class="score-cell">
+                <span>{{ g.score }}</span>
+                <span class="score-bar">
+                  <span style="--pct: {{ clamped }}%;"></span>
+                </span>
+              </div>
+            </td>
+
+            <td>{{ g.position }}</td>
+            <td>{{ g.strand }}</td>
+            <td>{{ g.enzyme }}</td>
+
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Export results -->
+    <div class="export-row">
+
+      <form method="POST" action="/export/csv">
+        <input type="hidden" name="dna" value="{{ dna }}">
+        <input type="hidden" name="enzyme" value="{{ enzyme }}">
+        <button type="submit" class="btn-secondary">Export CSV</button>
+      </form>
+
+      <form method="POST" action="/export/pdf">
+        <input type="hidden" name="dna" value="{{ dna }}">
+        <input type="hidden" name="enzyme" value="{{ enzyme }}">
+        <button type="submit" class="btn-secondary">Export PDF</button>
+      </form>
+
+    </div>
+
+    <!-- Interactive result plots -->
+    <div class="plots">
+
+      <div class="plot-card">
+        <h3>Score vs. genomic position</h3>
+        <div id="scorePositionPlot" class="plot-el"></div>
+      </div>
+
+      <div class="plot-card">
+        <h3>GC content vs. score</h3>
+        <div id="gcScorePlot" class="plot-el"></div>
+      </div>
+
+    </div>
+
+  {% else %}
+
+    <!-- Show instructions before the first search -->
+    <div class="empty-state">
+      No guides yet. Paste a sequence or upload a FASTA, choose an enzyme, and run the search.
+    </div>
+
+  {% endif %}
+
+</section>
+
+  </main>
+</div>
 
 {% if results %}
-<!-- Filters -->
-<h3>Filters</h3>
-<label>Minimum score:</label>
-<input type="number" id="minScore" value="0" step="1">
-
-<label>PAM type:</label>
-<select id="pamFilter">
-    <option value="all">All</option>
-    <option value="canonical">Canonical</option>
-    <option value="non-canonical">Non-canonical</option>
-</select>
-
-<label>Strand:</label>
-<select id="strandFilter">
-    <option value="all">All</option>
-    <option value="+">+</option>
-    <option value="-">-</option>
-</select>
-
-<!-- Table -->
-<table>
-    <tr>
-        <th>Guide</th><th>PAM</th><th>GC</th><th>Off-targets</th><th>Score</th><th>Position</th><th>PAM Type</th><th>Enzyme</th>
-    </tr>
-    {% for g in results %}
-    <tr data-score="{{ g.score }}" data-pam="{{ g.pam_class }}" data-strand="{{ g.strand }}">
-        <td>{{ g.guide }}</td><td>{{ g.pam }}</td><td>{{ g.gc }}</td><td>{{ g.off_targets }}</td>
-        <td>{{ g.score }}</td><td>{{ g.position }}</td>
-        <td>{% if g.pam_class=='canonical' %}<span style="color:white;background:green;padding:4px 6px;border-radius:4px;">Canonical</span>{% else %}<span style="color:white;background:orange;padding:4px 6px;border-radius:4px;">Non-canonical</span>{% endif %}</td>
-        <td>{{ g.enzyme }}</td>
-    </tr>
-    {% endfor %}
-</table>
-
-<!-- Export buttons -->
-<form method="POST" action="/export/csv">
-    <input type="hidden" name="dna" value="{{ request.form.dna }}">
-    <input type="hidden" name="enzyme" value="{{ request.form.enzyme }}">
-    <button type="submit">Export CSV</button>
-</form>
-
-<form method="POST" action="/export/pdf">
-    <input type="hidden" name="dna" value="{{ request.form.dna }}">
-    <input type="hidden" name="enzyme" value="{{ request.form.enzyme }}">
-    <button type="submit">Export PDF</button>
-</form>
-
-<!-- Plots -->
-<h3>Plots</h3>
-<div id="scorePositionPlot" style="width:100%; height:400px;"></div>
-<div id="gcScorePlot" style="width:100%; height:400px;"></div>
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
+
+    // Filter the displayed results table
     function applyFilters() {
         const minScore = parseFloat(document.getElementById("minScore").value);
         const pamFilter = document.getElementById("pamFilter").value;
@@ -103,38 +701,90 @@ document.addEventListener("DOMContentLoaded", () => {
             const strand = row.dataset.strand;
 
             let visible = true;
-            if(score < minScore) visible=false;
-            if(pamFilter!=="all" && pam!==pamFilter) visible=false;
-            if(strandFilter!=="all" && strand!==strandFilter) visible=false;
 
-            row.style.display = visible?"":"none";
+            if (score < minScore) visible = false;
+            if (pamFilter !== "all" && pam !== pamFilter) visible = false;
+            if (strandFilter !== "all" && strand !== strandFilter) visible = false;
+
+            row.style.display = visible ? "" : "none";
         });
     }
 
-    ["minScore","pamFilter","strandFilter"].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el) el.addEventListener("input", applyFilters);
+    // Apply filters when the user changes a filter
+    ["minScore", "pamFilter", "strandFilter"].forEach(id => {
+        const el = document.getElementById(id);
+
+        if (el) {
+            el.addEventListener("input", applyFilters);
+        }
     });
 
-    // Plots
-    const guides = {{ results | tojson | safe }};
-    Plotly.newPlot("scorePositionPlot",[{
-        x:guides.map(g=>g.position),
-        y:guides.map(g=>g.score),
-        mode:"markers",
-        text:guides.map(g=>g.guide),
-        marker:{size:8}
-    }],{title:"gRNA Score vs Genomic Position",xaxis:{title:"Position"},yaxis:{title:"Score"}});
+    // Get ranked guides from Flask
+    const guides = {{ results | tojson }};
 
-    Plotly.newPlot("gcScorePlot",[{
-        x:guides.map(g=>g.gc),
-        y:guides.map(g=>g.score),
-        mode:"markers",
-        text:guides.map(g=>g.guide),
-        marker:{size:8}
-    }],{title:"GC Content vs gRNA Score",xaxis:{title:"GC Fraction"},yaxis:{title:"Score"}});
+    // Plot score against genomic position
+    Plotly.newPlot("scorePositionPlot", [{
+        x: guides.map(g => g.position),
+        y: guides.map(g => g.score),
+        mode: "markers",
+        text: guides.map(g => g.guide),
+        marker: {
+            size: 8,
+            color: "#0E7C78"
+        }
+    }], {
+        margin: {
+            t: 10,
+            r: 10,
+            b: 40,
+            l: 50
+        },
+        xaxis: {
+            title: "Position"
+        },
+        yaxis: {
+            title: "Score"
+        },
+        font: {
+            family: "IBM Plex Sans, sans-serif"
+        }
+    }, {
+        responsive: true
+    });
+
+    // Plot GC content against score
+    Plotly.newPlot("gcScorePlot", [{
+        x: guides.map(g => g.gc),
+        y: guides.map(g => g.score),
+        mode: "markers",
+        text: guides.map(g => g.guide),
+        marker: {
+            size: 8,
+            color: "#B9790F"
+        }
+    }], {
+        margin: {
+            t: 10,
+            r: 10,
+            b: 40,
+            l: 50
+        },
+        xaxis: {
+            title: "GC fraction"
+        },
+        yaxis: {
+            title: "Score"
+        },
+        font: {
+            family: "IBM Plex Sans, sans-serif"
+        }
+    }, {
+        responsive: true
+    });
+
 });
 </script>
+
 {% endif %}
 
 </body>

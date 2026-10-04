@@ -1,8 +1,5 @@
 # This project was made by Maheen Abbasi on Jan 2026.
 
-# TODO:
-# - UI obv it is super ugly rn
-
 # app.py
 #--------------
 # Create a web interface for the CRISPR gRNA designer using Flask.
@@ -37,21 +34,19 @@ def index():
     # Vars passed to the HTML template
     results = None
     error = None
-
-    if request.method == "GET":
-        results = None
-        error = None
-        request.form = {}
+    dna = ""
+    enzyme = "SpCas9"
 
     # User submits the form
     if request.method == "POST":
         try:
-            dna = ""
+            # Get the selected enzyme
             enzyme = request.form.get("enzyme", "SpCas9")
 
             # FASTA upload
             if "fasta_file" in request.files:
                 file = request.files["fasta_file"]
+
                 if file and file.filename:
                     content = file.read().decode("utf-8")
                     dna = cl.normalize(content)
@@ -70,13 +65,14 @@ def index():
             guides = cl.find_all_grnas(dna, enzyme = enzyme)
             ranked = cl.rank_grnas(guides, dna)
             results = ranked[:MAX_RESULTS]
+
             print("Selected enzyme:", enzyme)
         
         except Exception as e:
             error = str(e)
 
     # Render the HTMLK page and pass results/errors to it
-    return render_template("index.html", results = results, error = error)
+    return render_template("index.html", results = results, error = error, dna = dna, enzyme = enzyme)
 
 # ------------------------------------------------------------------------------------ #
 # Exporting
