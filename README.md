@@ -4,7 +4,7 @@ A Python/Flask web application for identifying and ranking candidate CRISPR guid
 
 The project combines bioinformatics sequence processing with a web-based interface to identify potential guide sequences, evaluate PAM compatibility, calculate basic sequence characteristics, and rank candidate guides using a rule-based scoring heuristic.
 
-> **Project status:** Active development / educational project
+> **Project status:** Completed educational/portfolio project
 
 ## Overview
 
@@ -30,7 +30,6 @@ The application is intended as a learning and portfolio project demonstrating th
 * **Python**
 * **Flask**
 * **HTML/CSS**
-* **SQL** *(planned / future integration)*
 * **Git / GitHub**
 * **ReportLab**
 * **CSV processing**
@@ -192,26 +191,8 @@ This project is still under development. Some current limitations include:
 * The scoring system is a simplified heuristic rather than a validated biological prediction model.
 * Off-target analysis currently uses basic Hamming-distance matching.
 * The application does not currently account for the full range of biological factors used by established gRNA design tools.
-* The user interface is still being improved.
 * The current implementation is designed primarily for learning and experimentation rather than experimental or clinical use.
 * Additional testing and validation are still needed.
-
-## Future Improvements
-
-Potential future improvements include:
-
-* Improve the web interface and user experience
-* Add more Cas enzymes and PAM configurations
-* Improve off-target analysis
-* Add more sophisticated gRNA scoring methods
-* Add sequence visualization
-* Add more comprehensive FASTA handling
-* Add automated unit and integration tests
-* Improve error handling and input validation
-* Add database support for storing and comparing results
-* Containerize the application with Docker
-* Add deployment support
-* Improve documentation and example datasets
 
 ## What I Learned
 
